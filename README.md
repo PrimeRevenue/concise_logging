@@ -55,6 +55,38 @@ Rails.application.middleware.use ConciseLogging::LogMiddleware
 ConciseLogging::LogSubscriber.attach_to :action_controller
 ```
 
+#### JSON formatting
+
+Optionally, you can configure the logger to output in as Hash which can be used by an Gem like Logglier to send to Loggly in JSON format. 
+
+**Initialization:**
+
+```ruby
+#config/initializers/logging.rb
+ConciseLogging.options = {format: :json }
+```
+
+**Viola!** now you have Hash output that can be used by most Loggers to have JSON format.
+
+```
+{:method=>"GET", :status=>401, :ip=>"::1", :path=>"/eventmanager/reports/now", :metrics=>{:app=>2, :db=>0}, :params=>{"tagged_logger"=>"false", "config_middleware_only_config_block"=>"true", "dev_loggly"=>"true"}, :app=>"event_manager_service/application", :host=>"Hanks-MacBook-Pro.local", :environment=>"development"}
+```
+
+##### Adhoc JSON fields
+
+You can add adhoc fields to the output,  If you notice above `type: "web"`, this is an adhoc field. This allows you to further tune your output to your needs. 
+
+```ruby
+ConciseLogging.options = {
+  format: :json,
+  adhoc_fields: {
+    type: "web",
+    version: "v1.0.3"
+  }
+```
+
+In fact, the adhoc fields will overwrite ANY default field, so with great power...
+
 ## Contributing
 
 1. Fork it ( https://github.com/[my-github-username]/concise_logging/fork )

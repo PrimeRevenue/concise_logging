@@ -1,9 +1,22 @@
 module ConciseLogging
   class LogSubscriber < ActiveSupport::LogSubscriber
     INTERNAL_PARAMS = %w(controller action format _method only_path)
+    FORMATS = [:text,:json]
+
+    def adhoc_fields
+      if ConciseLogging.options[:adhoc_fields]
+        ConciseLogging.default_adhoc_fields.merge(ConciseLogging.options[:adhoc_fields])
+      else
+        ConciseLogging.default_adhoc_fields 
+      end
+    end
 
     def redirect_to(event)
       Thread.current[:logged_location] = event.payload[:location]
+    end
+
+    def options
+      ConciseLogging.options
     end
 
     def process_action(event)
@@ -20,18 +33,39 @@ module ConciseLogging
 
       app = payload[:view_runtime].to_i
       db = payload[:db_runtime].to_i
+      
+      if options[:format] == :json
 
-      message = format(
-        "%{method} %{status} %{ip} %{path}",
-        ip: format("%-15s", ip),
-        method: format_method(format("%-6s", method)),
-        status: format_status(status),
-        path: path
-      )
-      message << " redirect_to=#{location}" if location.present?
-      message << " parameters=#{params}" if params.present?
-      message << " #{color(exception_details, RED)}" if exception_details.present?
-      message << " (app:#{app}ms db:#{db}ms)"
+        message = {
+          method: method,
+          status: status,
+          ip: ip,
+          path: path,
+          metrics: {
+            app: app,
+            db: db
+          }
+        }
+
+        message.merge!(redirect: location) if location.present?
+        message.merge!(params: params) if params.present?
+        message.merge!(exception: exception_details) if exception_details.present? # THIS NEEDS TO CONSIDERATION
+        message.merge!(adhoc_fields)
+
+      else
+
+        message = format(
+          "%{method} %{status} %{ip} %{path}",
+          ip: format("%-15s", ip),
+          method: format_method(format("%-6s", method)),
+          status: format_status(status),
+          path: path
+        )
+        message << " redirect_to=#{location}" if location.present?
+        message << " parameters=#{params}" if params.present?
+        message << " #{color(exception_details, RED)}" if exception_details.present?
+        message << " (app:#{app}ms db:#{db}ms)"
+      end
 
       logger.warn message
     end
